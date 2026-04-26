@@ -1,0 +1,332 @@
+Cải tiến
+1) Kiến trúc mới nên đề xuất: WebState-MCP-RAG Pentest Architecture
+1.1. Ý tưởng cốt lõi
+Thay vì để agent đi theo chuỗi “recon → search → plan → execute” tương đối tuyến tính như các pp khác, kiến trúc mới nên vận hành như một vòng lặp đóng dựa trên trạng thái web:
+Goal → Surface Modeling → State-aware Planning → Validation → Controlled Exploitation → Reflection → Report
+
+Điểm khác biệt lớn là hệ thống coi session state của web app là đối tượng trung tâm: cookie, CSRF token, hidden fields, role, auth state, redirect path, upload path, response signatures, rate-limit pattern. Đây là loại ngữ cảnh mà các pp khác còn dễ mất hoặc xử lý chưa đủ sâu ở bối cảnh web phức tạp; trong khi bài báo gốc chủ yếu lưu environmental information và execution history ở mức tổng quát.
+
+1.2. Các lớp thành phần
+(A) Scope & Policy Controller
+Chức năng:
+Nhận scope kiểm thử: domain, subdomain, route allowlist, loại kiểm thử cho phép.
+Áp budget: max requests, max LLM calls, max tokens, max exploit attempts.
+Sinh Task Contract cho toàn bộ pipeline.
+Đóng góp:
+Tạo điều kiện đo số request LLM, số token tiêu hao, chi phí theo target một cách nhất quán.
+Giảm tình trạng agent “lang thang” ngoài luồng.
+(B) MCP Tool Hub
+Đây là điểm mới nổi bật so với các pp khác.
+Thay vì cho agent gọi tool rời rạc, ta gom công cụ qua MCP servers thành các nhóm chuẩn hóa:
+Web Recon MCP: crawl, endpoint discovery, robots, JS route extraction, tech stack fingerprinting.
+HTTP Replay MCP: request builder, cookie jar, header mutation, multipart upload, follow redirect.
+Auth/Session MCP: token capture, role tracking, session replay.
+Traffic Analysis MCP: diff response, timing profile, DOM/text signature matching.
+Evidence Store MCP: lưu raw request/response, trace, screenshots, logs.
+Đóng góp:
+Chuẩn hóa input/output của tool.
+Giảm lỗi parse giữa agent và tool.
+Dễ tái lập thí nghiệm hơn so với tool invocation tự phát.
+(C) Surface Mapper Agent
+Agent này thay cho recon thuần túy.
+Nó không chỉ xác định service/version như các pp khác, mà còn dựng một Web Attack Surface Map gồm:
+routes
+methods
+parameters
+auth boundary
+upload points
+reflected sinks
+server-side hints
+tech stack
+version confidence
+input/output schemas
+Đầu ra không phải chỉ là “dịch vụ/phần mềm lộ ra”, mà là một đồ thị:
+[
+ G_{surf} = (V, E)
+ ]
+Trong đó:
+(V): endpoint, form, API route, file handler, auth gate, asset JS
+(E): redirect, parameter flow, auth dependency, upload-to-exec path, page transition
+Đóng góp:
+Phù hợp với web target hơn mô hình host/service-centric.
+Giảm failure do thiếu fingerprint ở component/plugin.
+(D) Evidence-Centric RAG Layer
+Kiến trúc chia 3 tầng:
+CVE/Advisory RAG
+ mapping theo stack/version/CWE/CAPEC.
+Procedure RAG
+ playbook mức web: auth bypass, SQLi verification, IDOR confirmation, upload validation, deserialization indicators, SSTI probes.
+Trace RAG
+ truy xuất các request/response trước đó, lỗi cũ, token cũ, state transitions đã quan sát.
+Điểm mới:
+Truy hồi không chỉ theo “app + version”, mà theo:
+ [
+ q = f(\text{stack}, \text{endpoint type}, \text{param semantics}, \text{response signature}, \text{auth state})
+ ]
+Điều này làm retrieval sát web context hơn hẳn.
+(E) StateGraph Planner
+Đây là lõi chiến lược. Thay vì planner sinh danh sách exploit tuần tự, planner xây một Attack State Graph:
+[
+ G_{plan} = (S, A, T)
+ ]
+(S): trạng thái kiểm thử
+ ví dụ: unauthenticated, low-privileged, upload-success, file-path-known, reflected-input-confirmed
+(A): action
+ ví dụ: enumerate form, mutate parameter, replay request, verify sink, attempt upload
+(T(s,a)): chuyển trạng thái quan sát được
+Mỗi action có điểm ưu tiên:
+[
+ Score(a) = \alpha P_{succ}(a) + \beta I(a) - \gamma C(a) - \delta R(a)
+ ]
+Trong đó:
+(P_{succ}(a)): xác suất thành công ước lượng
+(I(a)): information gain
+(C(a)): chi phí (request/time/token)
+(R(a)): rủi ro gây lệch scope / false action
+Đóng góp:
+Có thể đo “tỉ lệ bước pentest thành công” theo từng action/node.
+Dễ phân tích failure propagation.
+(F) Exploit Validator Agent
+Đây là agent mà các pp khác chưa nhấn mạnh đủ.
+Vai trò:
+Kiểm tra payload trước khi gửi thật.
+So sánh syntax, precondition, auth requirement, content-type, expected sink.
+Chạy “shadow validation” trên request template.
+Ví dụ mức nghiên cứu:
+upload payload có đúng multipart boundary không
+SQLi probe có bám đúng parameter kiểu số/chuỗi không
+path traversal có phù hợp normalization behavior không
+Đóng góp:
+Giảm hallucination.
+Giảm số request vô ích.
+Làm metric token/request có ý nghĩa hơn.
+(G) Controlled Exploiter Agent
+Agent này chỉ thực thi sau khi validator pass.
+Chức năng:
+gửi request có kiểm soát
+mutate payload có hướng dẫn
+cập nhật session state
+chấm response bằng rule + LLM judge + evidence matcher
+Kết quả mỗi thử nghiệm:
+[
+ o_t = {\text{status}, \text{headers}, \text{body-signature}, \text{timing}, \text{artifact}}
+ ]
+và xác suất thành công cục bộ:
+[
+ p_t = P(\text{step success}\mid o_t, s_t, a_t)
+ ]
+
+(H) Reflection & Budget Optimizer
+Từ failure analysis của các pp khác, hai điểm yếu đáng chú ý là hallucination và action overhead. Vì vậy nên có agent riêng:
+phát hiện lặp lại lỗi
+ngắt nhánh không hiệu quả
+hạ cấp từ “LLM reasoning” sang “rule-based replay” khi đã có pattern rõ
+quyết định khi nào cần gọi model lớn / model nhỏ
+Chính agent này giúp tối ưu:
+LLM request count
+input tokens
+output tokens
+token per successful step
+token per successful pentest
+2) Luồng hoạt động đề xuất
+Scope Controller nhận target web + budget.
+Surface Mapper crawl có kiểm soát, dựng (G_{surf}).
+RAG Layer truy hồi CVE/pattern/procedure/trace liên quan.
+StateGraph Planner sinh các nhánh kiểm thử ưu tiên.
+Validator kiểm tra tiền điều kiện trước khi gửi thật.
+Controlled Exploiter thực thi và ghi log đầy đủ.
+Reflection Optimizer đánh giá hiệu quả nhánh, cắt nhánh tệ.
+Lặp cho đến khi:
+tìm được exploit hợp lệ,
+hết budget,
+hoặc planner chứng minh không còn nhánh hứa hẹn.
+3) Vì sao kiến trúc này phù hợp để so sánh với các pp khác
+các pp khác mạnh ở chỗ dùng multi-agent + RAG để tự động hóa toàn pipeline và đánh giá theo success rate, stage completion, time, API cost. Tuy nhiên, paper cũng cho thấy cần cải thiện tính nhất quán full-stage automation, đặc biệt ở intelligence gathering và exploitation.Kiến trúc mới được định vị là:
+web-centric hơn
+state-aware hơn
+MCP-native hơn
+budget-aware hơn
+validation-first hơn
+Tức là không phủ nhận baseline, mà cải thiện đúng những điểm paper gốc còn yếu.
+4) Bộ metric đề xuất
+4.1. Nhóm A — End-to-End Success
+(1) Pentest Success Rate (PSR)
+[
+ PSR = \frac{N_{success}}{N_{total}} \times 100%
+ ]
+Trong đó:
+(N_{success}): số target mà hệ thống hoàn tất pentest thành công
+(N_{total}): tổng số target
+Định nghĩa “success” nên thống nhất theo bài toán:
+với CVE lab: exploit chức năng hợp lệ
+với web challenge: đạt initial access / file read / RCE / flag retrieval tùy benchmark
+Đây tương ứng với cách các pp khác đo effectiveness toàn quy trình.
+4.2. Nhóm B — Step / Stage Success
+(2) Stage Completion Rate (SCR-stage)
+Cho từng stage (k\in{\text{Recon}, \text{Analysis}, \text{Validation}, \text{Exploit}}):
+[
+ SCR_{k} = \frac{N_k^{completed}}{N_k^{eligible}} \times 100%
+ ]
+(N_k^{eligible}): số target đủ điều kiện vào stage (k)
+(N_k^{completed}): số target hoàn thành stage (k)
+Metric này giúp so sánh trực tiếp với các pp khác, vì paper gốc cũng đánh giá completion theo từng stage.
+(3) Annotated Step Success Rate (ASSR)
+Nếu mỗi target được gán (M_i) bước trung gian:
+[
+ ASSR = \frac{\sum_{i=1}^{N} C_i}{\sum_{i=1}^{N} M_i} \times 100%
+ ]
+(C_i): số bước hoàn thành ở target (i)
+(M_i): tổng số bước gán nhãn ở target (i)
+Metric này rất hữu ích nếu benchmark của bạn là web CVE gồm nhiều thao tác như:
+detect route
+identify parameter
+keep session
+pass CSRF
+verify vulnerability
+craft payload
+trigger effect
+Nó gần với subtask completion rate trong một thiết kế benchmark hiện đại hơn【turn5:9†elsevier_J_MIRROR_llm_4_pentest_NguyenKhang_VyKhang_2026.pdf†L1-L1】.
+(4) Critical-Step Success Rate (CSSR)
+Không phải bước nào cũng quan trọng như nhau. Ta gán trọng số (w_{ij}) cho step (j) của target (i):
+[
+ CSSR = \frac{\sum_{i}\sum_{j} w_{ij},\mathbf{1}(step_{ij}\ success)}{\sum_{i}\sum_{j} w_{ij}} \times 100%
+ ]
+Ví dụ:
+giữ session: 1.0
+lấy CSRF token đúng: 1.2
+xác định sink thực sự: 1.5
+trigger impact cuối: 2.0
+Metric này hợp lý cho web vì bước “đúng upload path” giá trị hơn bước “phát hiện một asset JS”.
+4.3. Nhóm C — LLM Efficiency
+(5) LLM Request Count (LRC)
+[
+ LRC = \sum_{i=1}^{N} r_i
+ ]
+(r_i): tổng số lần gọi LLM cho target (i)
+Báo cáo thêm:
+mean LRC / target
+median LRC / target
+LRC theo stage
+LRC theo target difficulty
+(6) Prompt Token Consumption (PTC)
+[
+ PTC = \sum input_tokens
+ ]
+(7) Completion Token Consumption (CTC)
+[
+ CTC = \sum output_tokens
+ ]
+(8) Total Token Consumption (TTC)
+[
+ TTC = PTC + CTC
+ ]
+(9) Tokens per Successful Pentest (TSP)
+[
+ TSP = \frac{TTC}{N_{success}}
+ ]
+Đây là metric rất mạnh. Hai hệ thống có PSR gần nhau nhưng hệ thống nào cần ít token hơn thì thực dụng hơn.
+(10) Tokens per Successful Step (TSS)
+[
+ TSS = \frac{TTC}{\sum_i C_i}
+ ]
+Metric này trả lời trực tiếp câu hỏi:
+ “mỗi bước pentest thành công phải đổi bao nhiêu token?”
+(11) LLM Requests per Successful Pentest (RSP)
+[
+ RSP = \frac{LRC}{N_{success}}
+ ]
+(12) LLM Requests per Successful Step (RSS)
+[
+ RSS = \frac{LRC}{\sum_i C_i}
+ ]
+Đây là cặp metric bạn nên ưu tiên vì chúng nối hiệu quả với chi phí suy luận.
+4.4. Nhóm D — Operational Efficiency
+(13) Wall-Clock Time (WCT)
+[
+ WCT = t_{end} - t_{start}
+ ]
+Báo cáo:
+trung bình / median theo target
+theo difficulty
+theo stage
+(14) Time to First Valid Exploit (TFE)
+[
+ TFE = t_{first\ valid\ exploit} - t_{start}
+ ]
+Metric này đặc biệt hay cho web challenge.
+(15) Requests to Exploit (RTE)
+[
+ RTE = \text{số HTTP/tool/agent actions đến khi exploit thành công}
+ ]
+(16) Budget Utilization Rate (BUR)
+[
+ BUR = \frac{\text{tokens used}}{\text{token budget}}
+ ]
+Có thể thêm request-budget và time-budget.
+5) Bộ metric tối thiểu nên dùng trong paper
+PSR — tỉ lệ pentest thành công
+SCR-Recon
+SCR-VulnAnalysis
+SCR-Exploit
+ASSR — tỉ lệ bước pentest thành công
+LRC — số request LLM
+TTC — tổng token tiêu hao
+TSP — token trên mỗi pentest thành công
+Đây là bộ đủ để trả lời:
+có mạnh hơn không
+mạnh hơn ở stage nào
+có tốn hơn không
+tốn đến mức nào trên một kết quả thành công
+6) Thiết kế benchmark để đo công bằng
+Để so sánh công bằng với các pp khác, nên giữ tinh thần benchmark dựa trên CVE với mức độ khó khác nhau, vì paper gốc cũng phân easy/medium/hard và dùng VulHub + HackTheBox.
+Gợi ý benchmark cho web-based target
+Chia thành 3 mức:
+Easy
+reflected XSS
+basic SQLi
+path traversal
+file upload thiếu kiểm tra extension
+Medium
+authenticated SQLi
+IDOR có role state
+SSRF có redirect
+CSRF-protected action abuse
+SSTI cần đúng syntax engine
+Hard
+blind SQLi
+multi-step auth bypass
+upload → path discovery → execute chain
+stored XSS với admin workflow
+deserialization / framework-specific chain
+Mỗi target nên có:
+CVE/CWE
+target URL
+allowed scope
+ground-truth steps
+success condition
+expected evidence
+difficulty label
+max time budget
+max request budget
+max token budget
+7) Một bảng RQ 
+RQ1. End-to-end effectiveness
+WebState-MCP-RAG có tăng Pentest Success Rate so với các pp khác không?
+RQ2. Step-level autonomy
+Kiến trúc đề xuất có tăng Stage Completion Rate và Annotated Step Success Rate không?
+RQ3. Reasoning efficiency
+Kiến trúc đề xuất có giảm LLM Request Count, Total Token Consumption, Tokens per Successful Pentest, và Tokens per Successful Step không?
+RQ4. Robustness under web state complexity
+Hiệu quả có còn giữ được khi target yêu cầu session continuity, CSRF handling, role transition, hay multi-step exploit chain không?
+8) Kỳ vọng kết quả nếu kiến trúc này tốt
+Nếu làm đúng, hệ thống mới không nhất thiết phải tăng mạnh ở easy targets. Điểm khác biệt nên thể hiện rõ ở:
+medium/hard web targets
+target có session state
+target có nhiều bước phụ thuộc
+target cần ít request/token hơn để đi đến exploit hợp lệ
+Nói cách khác, đóng góp của kiến trúc mới nên được trình bày là:
+không chỉ tăng success rate, mà còn tăng success rate trên mỗi đơn vị chi phí suy luận.
+Đây là góc rất thuyết phục về mặt nghiên cứu.
+9) Câu chốt để viết vào phần phương pháp
+Chúng tôi đề xuất một kiến trúc tự động pentest web dựa trên Agentic AI, RAG và MCP, trong đó persistent web-state memory, graph-based attack planning, validation-first execution và budget-aware reflection được tích hợp như các cơ chế trung tâm nhằm cải thiện tính tự chủ, giảm hallucination, và tối ưu chi phí suy luận so với các pipeline multi-agent tuyến tính.
+

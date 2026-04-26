@@ -1,0 +1,35 @@
+2026-04-25 00:59:56,013 - src.ai_reporter - INFO - APIKeyRotator initialized with 8 keys and 0 proxies.
+/home/lehuuhoang/cve_finding/cve_data_collecting_tool/venv/lib/python3.12/site-packages/vertexai/generative_models/_generative_models.py:433: UserWarning: This feature is deprecated as of June 24, 2025 and will be removed on June 24, 2026. For details, see https://cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk.
+  warning_logs.show_deprecation_warning()
+2026-04-25 00:59:57,325 - src.agent_verifier - INFO - Starting AGENTIC AI Verifier Worker...
+2026-04-25 01:00:01,687 - src.database - INFO - Database connection pool initialized
+2026-04-25 01:00:02,810 - src.agent_verifier - INFO - ==> Agent Claimed CVE-2026-41321 (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...
+2026-04-25 01:00:02,811 - src.agent_verifier - INFO - [CVE-2026-41321] No PoC JSON found at data/PoC-in-GitHub/2026/CVE-2026-41321.json
+2026-04-25 01:00:02,811 - src.agent_verifier - INFO - [CVE-2026-41321] Agent Iteration 1/5...
+2026-04-25 01:01:33,436 - src.agent_verifier - INFO - [CVE-2026-41321] Using Docker Compose Up...
+2026-04-25 01:04:31,301 - src.agent_verifier - INFO - [CVE-2026-41321] Firing exploit.py from Host...
+2026-04-25 01:04:31,764 - src.agent_verifier - INFO - [CVE-2026-41321] Cleaning up Compose...
+2026-04-25 01:04:50,318 - src.agent_verifier - WARNING - [CVE-2026-41321] Iteration 1 Failed! Error:
+2026-04-25 01:04:50,341 - src.agent_verifier - WARNING - [CVE-2026-41321] EXPLOIT FAILED (Exit Code 1):\n[INFO] Starting exploit for CVE-2026-41321...
+\n[ERROR] Could not reset internal server state: HTTPConnectionPool(host='localhost', port=9003): Max retries exceeded with url: /reset (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7f9bb9a7b440>: Failed to establish a new connection: [Errno 111] Connection refused'))
+[ERROR] Please ensure the Docker environment is running with 'docker-compose up'.
+\n\nCONTAINER LOGS:\ninternal_server-1  | Traceback (most recent call last):
+internal_server-1  |   File "/app/app.py", line 1, in <module>
+internal_server-1  |     from flask import Flask, jsonify
+internal_server-1  |   File "/usr/local/lib/python3.10/site-packages/flask/__init__.py", line 5, in <module>
+internal_server-1  |     from .app import Flask as Flask
+internal_server-1  |   File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 30, in <module>
+internal_server-1  |     from werkzeug.urls import url_quote
+internal_server-1  | ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.10/site-packages/werkzeug/urls.py)
+allowed_server-1   | Traceback (most recent call last):
+allowed_server-1   |   File "/app/app.py", line 1, in <module>
+allowed_server-1   |     from flask import Flask, request, redirect
+allowed_server-1   |   File "/usr/local/lib/python3.10/site-packages/flask/__init__.py", line 5, in <module>
+allowed_server-1   |     from .app import Flask as Flask
+allowed_server-1   |   File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 30, in <module>
+allowed_server-1   |     from werkzeug.urls import url_quote
+allowed_server-1   | ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.10/site-packages/werkzeug/urls.py)
+vulnerable_app-1   | Vulnerable App listening on port 8080
+vulnerable_app-1   | Allowed domains: allowed-server:9001
+
+2026-04-25 01:04:50,341 - src.agent_verifier - INFO - [CVE-2026-41321] Agent Iteration 2/5...

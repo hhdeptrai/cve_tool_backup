@@ -1,0 +1,58 @@
+2026-04-25 00:59:56,009 - src.ai_reporter - INFO - APIKeyRotator initialized with 8 keys and 0 proxies.
+/home/lehuuhoang/cve_finding/cve_data_collecting_tool/venv/lib/python3.12/site-packages/vertexai/generative_models/_generative_models.py:433: UserWarning: This feature is deprecated as of June 24, 2025 and will be removed on June 24, 2026. For details, see https://cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk.
+  warning_logs.show_deprecation_warning()
+2026-04-25 00:59:57,326 - src.agent_verifier - INFO - Starting AGENTIC AI Verifier Worker...
+2026-04-25 01:00:01,686 - src.database - INFO - Database connection pool initialized
+2026-04-25 01:00:02,810 - src.agent_verifier - INFO - ==> Agent Claimed CVE-2026-41683 (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...
+2026-04-25 01:00:02,811 - src.agent_verifier - INFO - [CVE-2026-41683] No PoC JSON found at data/PoC-in-GitHub/2026/CVE-2026-41683.json
+2026-04-25 01:00:02,811 - src.agent_verifier - INFO - [CVE-2026-41683] Agent Iteration 1/5...
+2026-04-25 01:01:06,869 - src.agent_verifier - INFO - [CVE-2026-41683] Using Docker Compose Up...
+2026-04-25 01:03:27,931 - src.agent_verifier - INFO - [CVE-2026-41683] Firing exploit.py from Host...
+2026-04-25 01:03:36,347 - src.agent_verifier - INFO - [CVE-2026-41683] Cleaning up Compose...
+2026-04-25 01:03:47,017 - src.agent_verifier - WARNING - [CVE-2026-41683] Iteration 1 Failed! Error:
+2026-04-25 01:03:47,017 - src.agent_verifier - WARNING - [CVE-2026-41683] EXPLOIT FAILED (Exit Code 1):\n[*] Sending request to http://localhost:8080 with malicious 'lng' parameter...
+[*] Received response. Checking headers...
+[-] Exploit failed. Injected header not found.
+[-] Response headers:
+    X-Powered-By: Express
+    Content-Security-Policy: default-src 'none'
+    X-Content-Type-Options: nosniff
+    Content-Type: text/html; charset=utf-8
+    Content-Length: 1215
+    Date: Fri, 24 Apr 2026 18:03:34 GMT
+    Connection: keep-alive
+\n\n\nCONTAINER LOGS:\napp-1  | Vulnerable app for CVE-2026-41683 listening at http://localhost:8080
+app-1  | Node.js version: v14.5.0
+app-1  | TypeError [ERR_INVALID_CHAR]: Invalid character in header content ["Content-Language"]
+app-1  |     at ServerResponse.setHeader (_http_outgoing.js:539:3)
+app-1  |     at Object.setHeader (/usr/src/app/node_modules/i18next-http-middleware/cjs/httpFunctions.js:101:55)
+app-1  |     at i18nextMiddleware (/usr/src/app/node_modules/i18next-http-middleware/cjs/index.js:110:15)
+app-1  |     at Layer.handle [as handle_request] (/usr/src/app/node_modules/express/lib/router/layer.js:95:5)
+app-1  |     at trim_prefix (/usr/src/app/node_modules/express/lib/router/index.js:317:13)
+app-1  |     at /usr/src/app/node_modules/express/lib/router/index.js:284:7
+app-1  |     at Function.process_params (/usr/src/app/node_modules/express/lib/router/index.js:335:12)
+app-1  |     at next (/usr/src/app/node_modules/express/lib/router/index.js:275:10)
+app-1  |     at expressInit (/usr/src/app/node_modules/express/lib/middleware/init.js:40:5)
+app-1  |     at Layer.handle [as handle_request] (/usr/src/app/node_modules/express/lib/router/layer.js:95:5)
+
+2026-04-25 01:03:47,018 - src.agent_verifier - INFO - [CVE-2026-41683] Agent Iteration 2/5...
+2026-04-25 01:04:21,557 - src.agent_verifier - INFO - [CVE-2026-41683] Using Docker Compose Up...
+2026-04-25 01:05:11,077 - src.agent_verifier - WARNING - [CVE-2026-41683] Iteration 2 Failed! Error:
+2026-04-25 01:05:11,079 - src.agent_verifier - WARNING - [CVE-2026-41683] DOCKER COMPOSE UP FAILED:\n
+
+
+
+180411 v0.30.1-desktop.1 /usr/local/lib/docker/cli-plugins/docker-buildx bake --file - --progress rawjson --metadata-file /tmp/compose-build-metadataFile-7d5382d4-c2c0-4171-9dee-38d4db6858c6.json --allow fs.read=/home/lehuuhoang/cve_finding/cve_data_collecting_tool/tmp/CVE-2026-41683
+
+github.com/moby/buildkit/client.(*Client).solve.func2
+
+	github.com/moby/buildkit@v0.26.1/client/solve.go:305
+
+golang.org/x/sync/errgroup.(*Group).Go.func1
+
+	golang.org/x/sync@v0.17.0/errgroup/errgroup.go:93
+
+
+
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:05:11,080 - src.agent_verifier - INFO - [CVE-2026-41683] Agent Iteration 3/5...

@@ -1,0 +1,274 @@
+# Web CVE Census System Configuration
+# This file contains configuration for database connection, API keys, and filters
+
+# Database Configuration
+database:
+  # Neon PostgreSQL connection URL
+  # Format: postgresql://user:password@host.neon.tech/dbname?sslmode=require
+  # Override with DATABASE_URL environment variable
+  url: ${DATABASE_URL}
+  
+  # Connection pool settings
+  pool:
+    min_size: 2
+    max_size: 10
+    timeout: 30  # seconds
+    
+  # Query timeout (seconds)
+  query_timeout: 60
+
+# GitHub Advisory API Configuration
+github:
+  # Personal access token for higher rate limits (5000 req/hour vs 60 req/hour)
+  # Override with GITHUB_TOKEN environment variable
+  token: ${GITHUB_TOKEN}
+  
+  # API rate limiting
+  rate_limit:
+    max_requests_per_hour: 5000
+    retry_attempts: 3
+    retry_delay: 5  # seconds
+    backoff_multiplier: 2  # exponential backoff
+  
+  # GraphQL API endpoint
+  api_url: "https://api.github.com/graphql"
+
+# Exploit-DB Configuration
+exploitdb:
+  # Path to files_exploits.csv
+  # Override with EXPLOITDB_CSV_PATH environment variable
+  csv_path: ${EXPLOITDB_CSV_PATH:./data/exploitdb/files_exploits.csv}
+  
+  # CSV download URL (for automatic updates)
+  csv_url: "https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv"
+  
+  # Cache settings
+  cache:
+    enabled: true
+    ttl: 604800  # 7 days in seconds
+    
+  # Search settings
+  search:
+    enable_keyword_fallback: true
+    min_keyword_length: 3
+
+# Census Collection Configuration
+census:
+  # Year range for CVE collection
+  start_year: 2015
+  end_year: 2025
+  
+  # Batch size for API requests (recommended: 100)
+  batch_size: 100
+  
+  # Ecosystems to collect CVEs from
+  ecosystems:
+    - npm
+    - maven
+    - nuget
+    - pip
+    - composer
+    - go
+    - rubygems
+    - rust
+    - erlang
+  
+  # Priority CWE categories for labeling (is_priority_cwe=TRUE)
+  priority_cwes:
+    - Injection
+    - SQL Injection
+    - OS Command Injection
+    - Code Injection
+    - Command Injection
+    - Cross-site Scripting
+    - XSS
+    - Improper Restriction of XML External Entity Reference
+    - Missing Authentication for Critical Function
+    - Authentication Failures
+    - Identification and Authentication Failures
+    - Improper Access Control
+    - Incorrect Authorization
+    - Missing Authorization
+    - Broken Access Control
+    - Authorization Bypass Through User-Controlled Key
+    - Improper Privilege Management
+    - Insecure Deserialization
+    - Deserialization of Untrusted Data
+    - SSRF
+    - Path Traversal
+    - Unrestricted Upload of File with Dangerous Type
+    - CSRF
+    - Exposure of Sensitive Information to an Unauthorized Actor
+    - Sensitive Data Exposure
+    - Security Misconfiguration
+    - Incorrect Default Permissions
+    - Incorrect Permission Assignment for Critical Resource
+    - Race Condition
+  
+  # Error handling
+  error_handling:
+    continue_on_error: true
+    max_consecutive_errors: 10
+    log_errors: true
+
+# Task Management Configuration
+tasks:
+  # Claim expiration (days)
+  claim_expiration_days: 7
+  
+  # Batch allocation settings
+  batch:
+    default_size: 10
+    max_size: 50
+  
+  # Valid researcher IDs
+  valid_researchers:
+    - Minh
+    - Hoàng
+  
+  # Task prioritization
+  prioritization:
+    prefer_exploit_available: true
+    order_by_year: desc  # desc = newest first, asc = oldest first
+
+# Verification Workflow Configuration
+verification:
+  # Build status values
+  build_statuses:
+    - NOT_ATTEMPTED
+    - IN_PROGRESS
+    - SUCCESS
+    - FAILED
+  
+  # Exploit status values (hierarchical order)
+  exploit_statuses:
+    - NONE
+    - POC_PUBLIC
+    - EXPLOIT_DB
+    - VERIFIED_SUCCESS
+    - UNEXPLOITABLE
+  
+  # Research depth levels
+  research_depths:
+    - LEVEL_0  # Metadata only
+    - LEVEL_1  # Code review
+    - LEVEL_2  # Complete analysis with Docker
+  
+  # Validation rules
+  validation:
+    require_notes_for_verified: true
+    require_notes_for_unexploitable: true
+    min_notes_length: 10
+
+# CVE Exclusion Configuration
+exclusion:
+  # Validation rules
+  validation:
+    require_reason: true
+    min_reason_length: 10
+  
+  # Audit logging
+  audit:
+    enabled: true
+    log_path: ./logs/exclusion_audit.log
+
+# Reporting Configuration
+reporting:
+  # Default report mode
+  default_mode: priority  # priority or full
+  
+  # Output formats
+  formats:
+    - json
+    - csv
+    - markdown
+  
+  # Report sections
+  sections:
+    include_summary: true
+    include_by_year: true
+    include_by_ecosystem: true
+    include_by_cwe: true
+    include_verification_status: true
+    include_researcher_stats: true
+    include_exclusion_stats: true
+  
+  # Output directory
+  output_dir: ./reports
+
+# Logging Configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: INFO
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Log file settings
+  file:
+    enabled: true
+    path: ./logs/census.log
+    max_bytes: 10485760  # 10 MB
+    backup_count: 5
+  
+  # Console logging
+  console:
+    enabled: true
+    colorize: true
+
+# Data Validation Configuration
+validation:
+  # CVE ID format
+  cve_id_pattern: "^CVE-\\d{4}-\\d{4,}$"
+  
+  # CVSS score ranges
+  cvss:
+    min: 0.0
+    max: 10.0
+  
+  # Year range
+  year:
+    min: 2015
+    max: 2025
+  
+  # Field length limits
+  field_limits:
+    description: 10000
+    exclusion_reason: 1000
+    exploit_notes: 10000
+    researcher_id: 100
+
+# Performance Configuration
+performance:
+  # Database query optimization
+  query:
+    use_indexes: true
+    explain_slow_queries: true
+    slow_query_threshold: 1000  # milliseconds
+  
+  # Caching
+  cache:
+    enabled: true
+    backend: memory  # memory or redis
+    ttl: 3600  # seconds
+  
+  # Concurrency
+  concurrency:
+    max_workers: 4
+    use_connection_pooling: true
+
+# Development/Testing Configuration
+development:
+  # Enable debug mode
+  debug: false
+  
+  # Use test database
+  use_test_db: false
+  
+  # Mock external APIs
+  mock_apis: false
+  
+  # Seed data
+  seed:
+    enabled: false
+    sample_size: 100

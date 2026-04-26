@@ -1,0 +1,12 @@
+tmp/
+venv/
+__pycache__/
+*.zip
+*.tar.gz
+*.db
+*.sqlite3
+data/PoC-in-GitHub/
+data/exploitdb_full/
+data/vulhub/
+data/metasploit/
+.env

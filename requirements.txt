@@ -1,0 +1,130 @@
+# =============================================================================
+# Web CVE Census System - Python Dependencies
+# =============================================================================
+
+# =============================================================================
+# Core Dependencies
+# =============================================================================
+# PostgreSQL database adapter
+psycopg2-binary==2.9.9
+
+# Environment variable management
+python-dotenv==1.0.0
+
+# Data validation and serialization
+pydantic==2.5.3
+
+# YAML configuration file parsing
+PyYAML==6.0.1
+
+# =============================================================================
+# GitHub API Integration
+# =============================================================================
+# GitHub API client library
+PyGithub==2.1.1
+
+# HTTP requests library
+requests==2.31.0
+
+# =============================================================================
+# Data Processing
+# =============================================================================
+# Data manipulation and CSV processing
+pandas==2.1.4
+
+# Date and time utilities
+python-dateutil==2.8.2
+
+# =============================================================================
+# Command-Line Interface
+# =============================================================================
+# CLI framework
+click==8.1.7
+
+# Rich terminal output (for colorized logs and tables)
+rich==13.7.0
+
+# Progress bars
+tqdm==4.66.1
+
+# =============================================================================
+# Testing
+# =============================================================================
+# Testing framework
+pytest==7.4.3
+
+# Property-based testing
+hypothesis==6.92.2
+
+# Async testing support
+pytest-asyncio==0.21.1
+
+# Test coverage
+pytest-cov==4.1.0
+
+# Mock objects for testing
+pytest-mock==3.12.0
+
+# =============================================================================
+# Code Quality and Linting
+# =============================================================================
+# Code formatter
+black==23.12.1
+
+# Linter
+flake8==7.0.0
+
+# Static type checker
+mypy==1.8.0
+
+# Import sorting
+isort==5.13.2
+
+# Security vulnerability scanner
+bandit==1.7.6
+
+# =============================================================================
+# Logging and Monitoring
+# =============================================================================
+# Structured logging
+structlog==24.1.0
+
+# Colored logging output
+colorlog==6.8.0
+
+# =============================================================================
+# Utilities
+# =============================================================================
+# Retry logic for API calls
+tenacity==8.2.3
+
+# JSON schema validation
+jsonschema==4.20.0
+
+# Timezone handling
+pytz==2023.3
+
+# =============================================================================
+# Optional Dependencies (for advanced features)
+# =============================================================================
+# Redis caching (optional)
+# redis==5.0.1
+
+# Async PostgreSQL driver (optional, for async operations)
+# asyncpg==0.29.0
+
+# Celery for background tasks (optional)
+# celery==5.3.4
+
+# =============================================================================
+# Development Dependencies (optional)
+# =============================================================================
+# IPython for interactive debugging
+# ipython==8.19.0
+
+# Jupyter notebooks for data analysis
+# jupyter==1.0.0
+
+# Memory profiler
+# memory-profiler==0.61.0
+

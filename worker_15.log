@@ -1,0 +1,56 @@
+2026-04-25 00:59:56,017 - src.ai_reporter - INFO - APIKeyRotator initialized with 8 keys and 0 proxies.
+/home/lehuuhoang/cve_finding/cve_data_collecting_tool/venv/lib/python3.12/site-packages/vertexai/generative_models/_generative_models.py:433: UserWarning: This feature is deprecated as of June 24, 2025 and will be removed on June 24, 2026. For details, see https://cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk.
+  warning_logs.show_deprecation_warning()
+2026-04-25 00:59:57,326 - src.agent_verifier - INFO - Starting AGENTIC AI Verifier Worker...
+2026-04-25 01:00:01,686 - src.database - INFO - Database connection pool initialized
+2026-04-25 01:00:02,810 - src.agent_verifier - INFO - ==> Agent Claimed CVE-2026-29050 (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...
+2026-04-25 01:00:02,810 - src.agent_verifier - INFO - [CVE-2026-29050] No PoC JSON found at data/PoC-in-GitHub/2026/CVE-2026-29050.json
+2026-04-25 01:00:02,811 - src.agent_verifier - INFO - [CVE-2026-29050] Agent Iteration 1/5...
+2026-04-25 01:01:15,459 - src.agent_verifier - INFO - [CVE-2026-29050] Using Docker Compose Up...
+2026-04-25 01:02:33,152 - src.agent_verifier - WARNING - [CVE-2026-29050] Iteration 1 Failed! Error:
+2026-04-25 01:02:33,168 - src.agent_verifier - WARNING - [CVE-2026-29050] DOCKER COMPOSE UP FAILED:\ner/daemon.json --containerd /run/containerd/containerd.sock --pidfile /run/desktop/docker.pid --swarm-default-advertise-addr=192.168.65.3 --allow-direct-routing --log-format json --host-gateway-ip 192.168.65.254
+
+github.com/moby/buildkit/solver/llbsolver/ops.(*ExecOp).Exec
+
+	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/llbsolver/ops/exec.go:519
+
+github.com/moby/buildkit/solver.(*sharedOp).Exec.func2
+
+	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/jobs.go:1181
+
+
+
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:02:33,169 - src.agent_verifier - INFO - [CVE-2026-29050] Agent Iteration 2/5...
+2026-04-25 01:03:16,722 - src.agent_verifier - INFO - [CVE-2026-29050] Using Docker Compose Up...
+2026-04-25 01:04:11,376 - src.agent_verifier - WARNING - [CVE-2026-29050] Iteration 2 Failed! Error:
+2026-04-25 01:04:11,447 - src.agent_verifier - WARNING - [CVE-2026-29050] DOCKER COMPOSE UP FAILED:\ner/daemon.json --containerd /run/containerd/containerd.sock --pidfile /run/desktop/docker.pid --swarm-default-advertise-addr=192.168.65.3 --allow-direct-routing --log-format json --host-gateway-ip 192.168.65.254
+
+github.com/moby/buildkit/solver/llbsolver/ops.(*ExecOp).Exec
+
+	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/llbsolver/ops/exec.go:519
+
+github.com/moby/buildkit/solver.(*sharedOp).Exec.func2
+
+	/root/build-deb/engine/vendor/github.com/moby/buildkit/solver/jobs.go:1181
+
+
+
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:04:11,447 - src.agent_verifier - INFO - [CVE-2026-29050] Agent Iteration 3/5...
+2026-04-25 01:05:06,155 - src.agent_verifier - INFO - [CVE-2026-29050] Using Docker Compose Up...
+2026-04-25 01:05:11,042 - src.agent_verifier - WARNING - [CVE-2026-29050] Iteration 3 Failed! Error:
+2026-04-25 01:05:11,043 - src.agent_verifier - WARNING - [CVE-2026-29050] DOCKER COMPOSE UP FAILED:\n1406 v0.30.1-desktop.1 /usr/local/lib/docker/cli-plugins/docker-buildx bake --file - --progress rawjson --metadata-file /tmp/compose-build-metadataFile-cbb09ceb-2c9b-4a5e-9ae5-4ff0d21abec1.json --allow fs.read=/home/lehuuhoang/cve_finding/cve_data_collecting_tool/tmp/CVE-2026-29050
+
+github.com/moby/buildkit/client.(*Client).ListWorkers
+
+	github.com/moby/buildkit@v0.26.1/client/workers.go:34
+
+github.com/moby/buildkit/client.(*Client).Build
+
+	github.com/moby/buildkit@v0.26.1/client/build.go:32
+
+
+
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:05:11,043 - src.agent_verifier - INFO - [CVE-2026-29050] Agent Iteration 4/5...

@@ -1,0 +1,38 @@
+2026-04-25 00:59:56,006 - src.ai_reporter - INFO - APIKeyRotator initialized with 8 keys and 0 proxies.
+/home/lehuuhoang/cve_finding/cve_data_collecting_tool/venv/lib/python3.12/site-packages/vertexai/generative_models/_generative_models.py:433: UserWarning: This feature is deprecated as of June 24, 2025 and will be removed on June 24, 2026. For details, see https://cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk.
+  warning_logs.show_deprecation_warning()
+2026-04-25 00:59:57,328 - src.agent_verifier - INFO - Starting AGENTIC AI Verifier Worker...
+2026-04-25 01:00:01,922 - src.database - INFO - Database connection pool initialized
+2026-04-25 01:00:02,854 - src.agent_verifier - INFO - ==> Agent Claimed CVE-2026-41672 (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...
+2026-04-25 01:00:02,855 - src.agent_verifier - INFO - [CVE-2026-41672] No PoC JSON found at data/PoC-in-GitHub/2026/CVE-2026-41672.json
+2026-04-25 01:00:02,855 - src.agent_verifier - INFO - [CVE-2026-41672] Agent Iteration 1/5...
+2026-04-25 01:01:02,170 - src.agent_verifier - INFO - [CVE-2026-41672] Using Docker Compose Up...
+2026-04-25 01:02:39,394 - src.agent_verifier - INFO - [CVE-2026-41672] Firing exploit.py from Host...
+2026-04-25 01:02:41,889 - src.agent_verifier - INFO - [CVE-2026-41672] Cleaning up Compose...
+2026-04-25 01:03:46,385 - src.agent_verifier - INFO - 🚀 [CVE-2026-41672] VERIFIED SUCCESSFUL on iteration 1!
+2026-04-25 01:03:46,514 - src.database - INFO - Database connection pool closed
+2026-04-25 01:03:48,249 - src.database - INFO - Database connection pool initialized
+2026-04-25 01:03:49,021 - src.agent_verifier - INFO - [CVE-2026-41672] Saved to docs/cves_findings/CVE-2026-41672.md and Upgraded to LEVEL_2 (Verified!).
+2026-04-25 01:03:53,063 - src.agent_verifier - INFO - ==> Agent Claimed CVE-2026-6587 (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...
+2026-04-25 01:03:53,357 - src.agent_verifier - INFO - [CVE-2026-6587] No PoC JSON found at data/PoC-in-GitHub/2026/CVE-2026-6587.json
+2026-04-25 01:03:53,436 - src.agent_verifier - INFO - [CVE-2026-6587] Agent Iteration 1/5...
+2026-04-25 01:04:57,871 - src.agent_verifier - INFO - [CVE-2026-6587] Using Docker Compose Up...
+2026-04-25 01:05:11,028 - src.agent_verifier - WARNING - [CVE-2026-6587] Iteration 1 Failed! Error:
+2026-04-25 01:05:11,035 - src.agent_verifier - WARNING - [CVE-2026-6587] DOCKER COMPOSE UP FAILED:\n3
+
+
+
+181111 v0.30.1-desktop.1 /usr/local/lib/docker/cli-plugins/docker-buildx bake --file - --progress rawjson --metadata-file /tmp/compose-build-metadataFile-f1feff8a-5fcb-48f7-87c9-d10e910b8d86.json --allow fs.read=/home/lehuuhoang/cve_finding/cve_data_collecting_tool/tmp/CVE-2026-6587
+
+github.com/moby/buildkit/client.(*Client).solve.func2
+
+	github.com/moby/buildkit@v0.26.1/client/solve.go:305
+
+golang.org/x/sync/errgroup.(*Group).Go.func1
+
+	golang.org/x/sync@v0.17.0/errgroup/errgroup.go:93
+
+
+
+\n\nCONTAINER LOGS:\n
+2026-04-25 01:05:11,035 - src.agent_verifier - INFO - [CVE-2026-6587] Agent Iteration 2/5...

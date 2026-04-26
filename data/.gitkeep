@@ -1,0 +1,5 @@
+# Data directory for CVE census data
+# This directory stores:
+# - Exploit-DB CSV files
+# - Cached API responses
+# - Downloaded CVE data
