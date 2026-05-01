@@ -276,8 +276,13 @@ class AgentVerifier:
         def _cleanup():
             """Luôn chạy dù thành công hay thất bại."""
             subprocess.run(
-                ["docker", "compose", "down", "-v", "--remove-orphans"],
+                ["docker", "compose", "down", "-v", "--remove-orphans", "--rmi", "local"],
                 cwd=tmp_dir, capture_output=True, timeout=60
+            )
+            # Xóa dangling images (image rác từ build) để giải phóng disk
+            subprocess.run(
+                ["docker", "image", "prune", "-f"],
+                capture_output=True, timeout=30
             )
         
         try:
