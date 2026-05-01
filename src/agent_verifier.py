@@ -272,54 +272,57 @@ class AgentVerifier:
 
     def _run_docker_verification(self, cve_id: str, tmp_dir: str) -> tuple[bool, str]:
         """Runs docker-compose up, executes exploit.py locally, cleans up."""
-        img_name = cve_id.lower().replace("-", "_")
         
-        # 1. Compose Build & Up Command
-        logger.info(f"[{cve_id}] Using Docker Compose Up...")
-        # Add -V to prevent inheriting old anonymous volumes, and --build to force rebuild
-        build_res = subprocess.run(
-            ["docker", "compose", "up", "-d", "--build", "-V"],
-            cwd=tmp_dir, capture_output=True, text=True, timeout=600
-        )
-        if build_res.returncode != 0:
-            log_res = subprocess.run(
-                ["docker", "compose", "logs"],
-                cwd=tmp_dir, capture_output=True, text=True
+        def _cleanup():
+            """Luôn chạy dù thành công hay thất bại."""
+            subprocess.run(
+                ["docker", "compose", "down", "-v", "--remove-orphans"],
+                cwd=tmp_dir, capture_output=True, timeout=60
             )
-            # ✅ FIX: Lấy cả đầu + cuối stderr vì lỗi thực sự nằm ở ĐẦU
-            stderr = build_res.stderr
-            if len(stderr) > 1500:
-                err_detail = stderr[:800] + "\n...(truncated)...\n" + stderr[-400:]
+        
+        try:
+            # 1. Compose Build & Up
+            logger.info(f"[{cve_id}] Using Docker Compose Up...")
+            build_res = subprocess.run(
+                ["docker", "compose", "up", "-d", "--build", "-V"],
+                cwd=tmp_dir, capture_output=True, text=True, timeout=600
+            )
+            if build_res.returncode != 0:
+                log_res = subprocess.run(
+                    ["docker", "compose", "logs"],
+                    cwd=tmp_dir, capture_output=True, text=True
+                )
+                stderr = build_res.stderr
+                if len(stderr) > 1500:
+                    err_detail = stderr[:800] + "\n...(truncated)...\n" + stderr[-400:]
+                else:
+                    err_detail = stderr
+                err_msg = f"DOCKER COMPOSE BUILD FAILED:\n{err_detail}\n\nCONTAINER LOGS:\n{log_res.stdout[-1000:]}"
+                return False, err_msg
+
+            # Wait for services to fully boot
+            time.sleep(5)
+
+            # 2. Exploit on Host
+            logger.info(f"[{cve_id}] Firing exploit.py from Host...")
+            exploit_res = subprocess.run(
+                ["python3", "exploit.py"],
+                cwd=tmp_dir, capture_output=True, text=True, timeout=120
+            )
+
+            output_log = exploit_res.stdout + "\\n" + exploit_res.stderr
+            log_res = subprocess.run(["docker", "compose", "logs"], cwd=tmp_dir, capture_output=True, text=True)
+            container_logs = log_res.stdout[-2000:]
+
+            if exploit_res.returncode == 0 or "EXPLOIT_SUCCESS" in output_log:
+                return True, "EXPLOIT SUCCESSFUL"
             else:
-                err_detail = stderr
-            err_msg = f"DOCKER COMPOSE BUILD FAILED:\n{err_detail}\n\nCONTAINER LOGS:\n{log_res.stdout[-1000:]}"
-            subprocess.run(["docker", "compose", "down", "-v", "--remove-orphans"], cwd=tmp_dir, capture_output=True)
-            return False, err_msg
-            
-        # Wait for services to fully boot (SQL init can take a few seconds)
-        time.sleep(5)
-        
-        # 2. Exploit on Host
-        logger.info(f"[{cve_id}] Firing exploit.py from Host...")
-        exploit_res = subprocess.run(
-            ["python3", "exploit.py"],
-            cwd=tmp_dir, capture_output=True, text=True, timeout=120
-        )
-        
-        output_log = exploit_res.stdout + "\\n" + exploit_res.stderr
-        
-        # Get container logs to help with debugging
-        log_res = subprocess.run(["docker", "compose", "logs"], cwd=tmp_dir, capture_output=True, text=True)
-        container_logs = log_res.stdout[-2000:]
-        
-        # 3. Cleanup Compose
-        logger.info(f"[{cve_id}] Cleaning up Compose...")
-        subprocess.run(["docker", "compose", "down", "-v", "--remove-orphans"], cwd=tmp_dir, capture_output=True)
-        
-        if exploit_res.returncode == 0 or "EXPLOIT_SUCCESS" in output_log:
-            return True, "EXPLOIT SUCCESSFUL"
-        else:
-            return False, f"EXPLOIT FAILED (Exit Code {exploit_res.returncode}):\\n{output_log[-1000:]}\\n\\nCONTAINER LOGS:\\n{container_logs}"
+                return False, f"EXPLOIT FAILED (Exit Code {exploit_res.returncode}):\\n{output_log[-1000:]}\\n\\nCONTAINER LOGS:\\n{container_logs}"
+
+        finally:
+            # ✅ LUÔN LUÔN dọn dẹp, dù thành công, thất bại, hay exception/timeout
+            logger.info(f"[{cve_id}] Cleaning up Compose...")
+            _cleanup()
 
 
     def verify_and_report(self, cve_id: str, package: str, cvss: float, cwe: str, description: str, poc_code: str = "") -> tuple[bool, str, str, str]:
