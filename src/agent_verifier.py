@@ -528,6 +528,7 @@ class AgentVerifier:
                     logger.info("No more LEVEL_0 priority CVEs available. Sleeping for 30s...")
                     conn.rollback()
                     self.db_manager.return_connection(conn)
+                    conn = None
                     time.sleep(30)
                     continue
                     
@@ -537,6 +538,7 @@ class AgentVerifier:
                 cursor.execute("UPDATE web_cve_census_master SET research_depth = 'LEVEL_1' WHERE cve_id = %s", (cve_id,))
                 conn.commit()
                 self.db_manager.return_connection(conn)
+                conn = None
                 logger.info(f"==> Agent Claimed {cve_id} (Marked LEVEL_1 to release DB Lock). Initializing Hack Process...")
                 
                 # -------------------------------
