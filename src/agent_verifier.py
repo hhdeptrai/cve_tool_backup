@@ -13,7 +13,10 @@ import shutil
 from pathlib import Path
 
 import vertexai
-from vertexai.generative_models import GenerativeModel, ChatSession, GenerationConfig
+from vertexai.generative_models import (
+    GenerativeModel, ChatSession, GenerationConfig,
+    HarmCategory, HarmBlockThreshold,
+)
 
 from .ai_reporter import APIKeyRotator
 from .database import DatabaseManager, CVERepository
@@ -44,6 +47,14 @@ class AgentVerifier:
         # ✅ BƯỚC 1: Giới hạn output token để tiết kiệm chi phí
         # max_output_tokens=8192: Đủ cho docker-compose + exploit.py + report, không dư thừa
         # temperature=0.2: Ít sáng tạo hơn → ít ảo giác hơn, code chắc chắn hơn
+        # Safety settings: tắt filter để AI có thể viết exploit code
+        # (context: đây là nghiên cứu bảo mật hợp pháp)
+        self.safety_settings = {
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT:        HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH:       HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        }
         self.model = GenerativeModel(
             "gemini-2.5-pro",
             generation_config=GenerationConfig(
@@ -276,14 +287,17 @@ class AgentVerifier:
         def _cleanup():
             """Luôn chạy dù thành công hay thất bại."""
             subprocess.run(
-                ["docker", "compose", "down", "-v", "--remove-orphans", "--rmi", "local"],
+                ["docker", "compose", "down", "-v", "--remove-orphans", "--rmi", "all"],
                 cwd=tmp_dir, capture_output=True, timeout=60
             )
-            # Xóa dangling images (image rác từ build) để giải phóng disk
+            # Xóa toàn bộ image không dùng để tránh đầy disk khi chạy nhiều CVE
             subprocess.run(
-                ["docker", "image", "prune", "-f"],
-                capture_output=True, timeout=30
+                ["docker", "image", "prune", "-a", "-f"],
+                capture_output=True, timeout=60
             )
+            # Xóa thư mục tmp/CVE-XXXX sau khi xong
+            if os.path.exists(tmp_dir):
+                shutil.rmtree(tmp_dir, ignore_errors=True)
         
         try:
             # 1. Compose Build & Up
@@ -373,7 +387,7 @@ class AgentVerifier:
             date=today_date, port=assigned_port
         )
 
-        chat = self.model.start_chat()
+        chat = self.model.start_chat(response_validation=False)
         current_prompt = first_prompt
         
         response_text = ""
@@ -575,8 +589,20 @@ class AgentVerifier:
                     # In case it failed before commit
                     try:
                         conn.rollback()
-                        self.db_manager.return_connection(conn)
                     except:
                         pass
+                    self.db_manager.return_connection(conn)
+                
+                # Revert stuck LEVEL_1 back to LEVEL_0 so it can be retried later
+                if 'cve_id' in locals() and cve_id:
+                    try:
+                        conn_revert = self.db_manager.get_connection()
+                        cursor_revert = conn_revert.cursor()
+                        cursor_revert.execute("UPDATE web_cve_census_master SET research_depth = 'LEVEL_0' WHERE cve_id = %s AND research_depth = 'LEVEL_1'", (cve_id,))
+                        conn_revert.commit()
+                        self.db_manager.return_connection(conn_revert)
+                    except Exception as revert_err:
+                        logger.error(f"Could not revert CVE {cve_id}: {revert_err}")
+                
                 time.sleep(10)
 
