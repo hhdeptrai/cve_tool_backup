@@ -510,6 +510,7 @@ class AgentVerifier:
                     FROM web_cve_census_master 
                     WHERE is_priority_cwe = TRUE 
                       AND research_depth = 'LEVEL_0' 
+                      AND build_status = 'NOT_ATTEMPTED'
                     FOR UPDATE SKIP LOCKED 
                     LIMIT 1;
                 """)
