@@ -387,7 +387,7 @@ class AgentVerifier:
             date=today_date, port=assigned_port
         )
 
-        chat = self.model.start_chat(response_validation=False)
+        # NO MORE start_chat()! We use stateless generate_content() to save tokens
         current_prompt = first_prompt
         
         response_text = ""
@@ -398,7 +398,8 @@ class AgentVerifier:
             logger.info(f"[{cve_id}] Agent Iteration {iteration}/{self.max_retries}...")
             
             try:
-                response = chat.send_message(current_prompt)
+                # Stateless call! Does not accumulate infinite history.
+                response = self.model.generate_content(current_prompt)
             except Exception as e:
                 logger.error(f"[{cve_id}] Vertex AI Error: {e}")
                 time.sleep(10)
@@ -415,11 +416,12 @@ class AgentVerifier:
             files_dict = self._extract_all_files(text_response)
             
             if 'docker-compose.yml' not in files_dict or 'exploit.py' not in files_dict:
-                # ✅ BƯỚC 2: Retry prompt ngắn gọn - không gửi lại toàn bộ context
+                # Re-construct a full stateless prompt
                 current_prompt = (
-                    "FORMAT ERROR: Missing required files.\n"
-                    "MUST use: ===FILE: filename=== content ===END_FILE===\n"
-                    "MUST include both docker-compose.yml AND exploit.py. Resend all files now."
+                    first_prompt + "\n\n"
+                    "=== PREVIOUS ATTEMPT FAILED ===\n"
+                    "FORMAT ERROR: Missing required files. "
+                    "MUST include both docker-compose.yml AND exploit.py using ===FILE: name=== blocks."
                 )
                 continue
                 
@@ -444,12 +446,17 @@ class AgentVerifier:
             else:
                 logger.warning(f"[{cve_id}] Iteration {iteration} Failed! Error:")
                 logger.warning(f"[{cve_id}] {feedback_log[:300]}...")
-                # ✅ FIX: Gửi phần ĐẦU của error (nơi lỗi thực sự xảy ra)
-                # Không gửi phần cuối vì đó chỉ là Docker daemon config vô nghĩa
-                error_for_ai = feedback_log[:600] if len(feedback_log) > 600 else feedback_log
+                # Truncate error to save tokens
+                error_for_ai = feedback_log[:1000] if len(feedback_log) > 1000 else feedback_log
+                
+                # Re-construct stateless prompt for next iteration
+                current_files_str = "\n".join([f"===FILE: {k}===\n{v}\n===END_FILE===" for k, v in files_dict.items()])
                 current_prompt = (
-                    f"FAILED. Fix this error:\n{error_for_ai}\n"
-                    "Return ALL files using ===FILE: name=== content ===END_FILE=== format."
+                    first_prompt + "\n\n"
+                    "=== PREVIOUS ATTEMPT FAILED ===\n"
+                    "You wrote the following files:\n" + current_files_str + "\n\n"
+                    "But execution FAILED with this error:\n" + error_for_ai + "\n\n"
+                    "Please fix the code. Return ALL files again using the ===FILE: name=== content ===END_FILE=== format."
                 )
                 
         logger.error(f"❌ [{cve_id}] Failed to verify after {self.max_retries} attempts.")
