@@ -74,6 +74,7 @@ class DatabaseManager:
         """Close all connections in the pool."""
         if self._connection_pool is not None:
             self._connection_pool.closeall()
+            self._connection_pool = None
             logger.info("Database connection pool closed")
     
     def create_schema(self) -> None:
